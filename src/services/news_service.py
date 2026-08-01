@@ -1,55 +1,123 @@
 """
-Service for fetching financial news from NewsAPI.
+Main News Service
+
+Coordinates:
+1. Company Lookup
+2. Finnhub News
+3. NewsAPI Fallback
+4. Sentiment Analysis
 """
 
-import os
-import requests
-
-from dotenv import load_dotenv
-from src.models.predictor import predict_sentiment
-
-# Load environment variables
-load_dotenv()
-
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+from src.services.sentiment_service import analyze_articles
+from src.services.company_service import get_stock_symbol
+from src.services.finnhub_service import fetch_news as fetch_finnhub_news
+from src.services.newsapi_service import fetch_news as fetch_newsapi_news
 
 
 def fetch_news(company: str):
     """
-    Fetch the latest financial news for a company.
+    Fetch news using Finnhub first.
+    If no news is found, fall back to NewsAPI.
     """
 
-    url = "https://newsapi.org/v2/everything"
+    symbol = get_stock_symbol(company)
 
-    params = {
-        "q": company,
-        "language": "en",
-        "sortBy": "publishedAt",
-        "pageSize": 5,
-        "apiKey": NEWS_API_KEY,
-    }
+    if symbol is None:
+        print("Company not found.")
+        return []
 
-    response = requests.get(url, params=params)
+    print(f"\nDetected Symbol : {symbol}")
+    print("Searching Finnhub...")
 
-    data = response.json()
+    articles = fetch_finnhub_news(symbol)
 
-    return data.get("articles", [])
+    if articles:
+        print("✓ News found in Finnhub.")
+        return articles
 
+    print("No articles found in Finnhub.")
+    print("Searching NewsAPI...")
+
+    articles = fetch_newsapi_news(company)
+
+    if articles:
+        print("✓ News found in NewsAPI.")
+
+    return articles
 
 if __name__ == "__main__":
 
-    articles = fetch_news("Apple")
+    company = input("Enter Company Name: ")
 
-    print(f"\nFound {len(articles)} articles.\n")
+    # Get Stock Symbol
+    symbol = get_stock_symbol(company)
 
-    for article in articles:
+    if symbol is None:
+        print("\n❌ Company not found.")
+        exit()
 
-        headline = article["title"]
+    # Fetch News
+    articles = fetch_news(company)
 
-        sentiment = predict_sentiment(headline)
+    if not articles:
+        print("\n❌ No news articles found for this company.")
+        exit()
 
-        print("=" * 80)
-        print(f"Title      : {headline}")
-        print(f"Source     : {article['source']['name']}")
-        print(f"Published  : {article['publishedAt']}")
-        print(f"Sentiment  : {sentiment}")
+    # Analyze Sentiment
+    results = analyze_articles(articles)
+
+    # ================= HEADER =================
+
+    print("\n" + "=" * 100)
+    print("REAL-TIME FINANCIAL NEWS SENTIMENT ANALYZER".center(100))
+    print("=" * 100)
+
+    print(f"\nCompany         : {company.title()}")
+    print(f"Stock Symbol    : {symbol}")
+    print(f"News Source     : {'Finnhub / NewsAPI'}")
+    print(f"Articles Found  : {len(results['articles'])}")
+
+    # ================= ARTICLES =================
+
+    for i, article in enumerate(results["articles"], start=1):
+
+        sentiment = article["sentiment"].upper()
+
+        if sentiment == "POSITIVE":
+            icon = "🟢"
+        elif sentiment == "NEGATIVE":
+            icon = "🔴"
+        else:
+            icon = "🟡"
+
+        print("\n" + "=" * 100)
+        print(f"ARTICLE #{i}")
+        print("=" * 100)
+
+        print(f"📰 {'Title':<12}: {article['headline']}")
+        print(f"🏢 {'Source':<12}: {article['source']}")
+        print(f"📅 {'Published':<12}: {article['published']}")
+        print(f"🤖 {'Sentiment':<12}: {icon} {sentiment}")
+
+    # ================= SUMMARY =================
+
+    if results["positive"] > results["negative"]:
+        overall = "🟢 POSITIVE"
+
+    elif results["negative"] > results["positive"]:
+        overall = "🔴 NEGATIVE"
+
+    else:
+        overall = "🟡 NEUTRAL"
+
+    print("\n" + "=" * 100)
+    print("MARKET SENTIMENT SUMMARY".center(100))
+    print("=" * 100)
+
+    print(f"🟢 Positive Articles : {results['positive']}")
+    print(f"🟡 Neutral Articles  : {results['neutral']}")
+    print(f"🔴 Negative Articles : {results['negative']}")
+
+    print(f"\nOverall Market Mood : {overall}")
+
+    print("=" * 100)
