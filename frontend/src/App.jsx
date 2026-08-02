@@ -7,6 +7,10 @@ const [articles, setArticles] = useState([]);
 const [summary, setSummary] = useState(null);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
+const [searchedCompany, setSearchedCompany] = useState("");
+const [totalArticles, setTotalArticles] = useState(0);
+const [companyInfo, setCompanyInfo] = useState(null);
+const [overallSentiment, setOverallSentiment] = useState("");
 
   const searchNews = async () => {
     if (!company.trim()) {
@@ -24,13 +28,38 @@ setError("");
       );
 
       const data = await response.json();
-
+      setCompanyInfo({
+  company: data.company,
+  total: data.total_articles,
+});
+      setSearchedCompany(data.company);
+      setTotalArticles(data.total_articles);
       console.log(data);
 
+      {companyInfo && (
+  <div className="company-banner">
+
+    <h2>{companyInfo.company}</h2>
+
+    <p>
+      {companyInfo.total} Articles Analyzed
+    </p>
+
+  </div>
+)}
       // Temporary
 setArticles(data.articles || []);
 
 setSummary(data.summary);
+const { positive, neutral, negative } = data.summary;
+
+if (positive > neutral && positive > negative) {
+  setOverallSentiment("POSITIVE");
+} else if (negative > positive && negative > neutral) {
+  setOverallSentiment("NEGATIVE");
+} else {
+  setOverallSentiment("NEUTRAL");
+}
 console.log("Summary:", data.summary);
 
     } catch (error) {
@@ -44,8 +73,21 @@ setLoading(false);
   return (
     <div className="container">
 
-      <h1>Financial News Sentiment Analyzer</h1>
 
+      <h1 className="title">
+  📈 Financial News Sentiment Dashboard
+</h1>
+
+<p className="subtitle">
+  AI Powered Market Intelligence
+</p>
+
+{searchedCompany && (
+  <div className="company-info">
+    <h2>{searchedCompany}</h2>
+    <p>{totalArticles} Articles Found</p>
+  </div>
+)}
       <div className="search-box">
 
   <input
@@ -83,6 +125,22 @@ setLoading(false);
   </p>
 )}
 
+{overallSentiment && (
+  <div className="overall-card">
+
+    <h2>Overall Market Sentiment</h2>
+
+    <div className={`overall-badge ${overallSentiment.toLowerCase()}`}>
+      {overallSentiment}
+    </div>
+
+    <p>
+      Based on analysis of {companyInfo?.total} news articles
+    </p>
+
+  </div>
+)}
+
 {/* Summary Cards */}
 {summary && (
   <div className="summary">
@@ -109,40 +167,40 @@ setLoading(false);
 
         {articles.map((article, index) => (
 
-          <div className="card" key={index}>
+  <div className="card" key={index}>
 
-            <h3>
-  <a
-    href={article.url}
-    target="_blank"
-    rel="noreferrer"
-  >
-    {article.headline}
-  </a>
-</h3>
+    <h3>{article.headline}</h3>
 
-            <p>
-              <strong>Source:</strong> {article.source}
-            </p>
+    <div className="meta">
 
-            <p>
-              <strong>Published:</strong> {article.published}
-            </p>
+      <span>📰 {article.source}</span>
 
-           <p>
-  <strong>Sentiment:</strong>
+      <span>🕒 {article.published}</span>
 
-  <span
-    className={`badge ${article.sentiment.toLowerCase()}`}
-  >
-    {article.sentiment.toUpperCase()}
-  </span>
+    </div>
 
-</p>
+    <div className="sentiment-row">
 
-          </div>
+      <span
+        className={`badge ${article.sentiment.toLowerCase()}`}
+      >
+        {article.sentiment.toUpperCase()}
+      </span>
 
-        ))}
+    </div>
+
+    <a
+      className="read-more"
+      href={article.url}
+      target="_blank"
+      rel="noreferrer"
+    >
+      Read Full Article →
+    </a>
+
+  </div>
+
+))}
 
       </div>
 
