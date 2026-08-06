@@ -2,205 +2,211 @@ import { useState } from "react";
 import "./App.css";
 
 function App() {
-const [company, setCompany] = useState("");
-const [articles, setArticles] = useState([]);
-const [summary, setSummary] = useState(null);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState("");
-const [searchedCompany, setSearchedCompany] = useState("");
-const [totalArticles, setTotalArticles] = useState(0);
-const [companyInfo, setCompanyInfo] = useState(null);
-const [overallSentiment, setOverallSentiment] = useState("");
+  const [company, setCompany] = useState("");
+  const [limit, setLimit] = useState(5);
+
+  const [articles, setArticles] = useState([]);
+  const [summary, setSummary] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [searchedCompany, setSearchedCompany] = useState("");
+  const [totalArticles, setTotalArticles] = useState(0);
+
+  const [companyInfo, setCompanyInfo] = useState(null);
+
+  const [overallSentiment, setOverallSentiment] = useState("");
 
   const searchNews = async () => {
     if (!company.trim()) {
-  setError("Please enter a company name.");
-  return;
-}
+      setError("Please enter a company name.");
+      return;
+    }
 
-setError("");
-
+    setError("");
     setLoading(true);
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/news/${company}`
+      `/news/${company}?limit=${limit}`
       );
 
       const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.detail || "Something went wrong.");
+        setArticles([]);
+        setSummary(null);
+        setCompanyInfo(null);
+        return;
+      }
+
       setCompanyInfo({
-  company: data.company,
-  total: data.total_articles,
-});
+        company: data.company,
+        total: data.total_articles,
+      });
+
       setSearchedCompany(data.company);
       setTotalArticles(data.total_articles);
-      console.log(data);
 
-      {companyInfo && (
-  <div className="company-banner">
+      setArticles(data.articles || []);
+      setSummary(data.summary);
 
-    <h2>{companyInfo.company}</h2>
+      const { positive, neutral, negative } = data.summary;
 
-    <p>
-      {companyInfo.total} Articles Analyzed
-    </p>
-
-  </div>
-)}
-      // Temporary
-setArticles(data.articles || []);
-
-setSummary(data.summary);
-const { positive, neutral, negative } = data.summary;
-
-if (positive > neutral && positive > negative) {
-  setOverallSentiment("POSITIVE");
-} else if (negative > positive && negative > neutral) {
-  setOverallSentiment("NEGATIVE");
-} else {
-  setOverallSentiment("NEUTRAL");
-}
-console.log("Summary:", data.summary);
-
-    } catch (error) {
-      console.error(error);
-    }
-    finally {
-setLoading(false);
+      if (positive > neutral && positive > negative) {
+        setOverallSentiment("POSITIVE");
+      } else if (negative > positive && negative > neutral) {
+        setOverallSentiment("NEGATIVE");
+      } else {
+        setOverallSentiment("NEUTRAL");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Unable to connect to server.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="container">
 
-
       <h1 className="title">
-  📈 Financial News Sentiment Dashboard
-</h1>
+        📈 Financial News Sentiment Dashboard
+      </h1>
 
-<p className="subtitle">
-  AI Powered Market Intelligence
-</p>
+      <p className="subtitle">
+        AI Powered Market Intelligence
+      </p>
 
-{searchedCompany && (
-  <div className="company-info">
-    <h2>{searchedCompany}</h2>
-    <p>{totalArticles} Articles Found</p>
-  </div>
-)}
+      {companyInfo && (
+        <div className="company-info">
+          <h2>{companyInfo.company}</h2>
+          <p>{companyInfo.total} Articles Found</p>
+        </div>
+      )}
+
       <div className="search-box">
 
-  <input
-    type="text"
-    placeholder="Enter Company Name..."
-    value={company}
-    onChange={(e) => setCompany(e.target.value)}
-    onKeyDown={(e) => {
-      if (e.key === "Enter") {
-        searchNews();
-      }
-    }}
-  />
+        <input
+          type="text"
+          placeholder="Enter Company Name..."
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              searchNews();
+            }
+          }}
+        />
 
-  <button
-    onClick={searchNews}
-    disabled={loading}
-  >
-    {loading ? "Searching..." : "Search"}
-  </button>
+        <select
+          value={limit}
+          onChange={(e) => setLimit(Number(e.target.value))}
+        >
+          <option value={5}>5 Articles</option>
+          <option value={10}>10 Articles</option>
+          <option value={20}>20 Articles</option>
+          <option value={50}>50 Articles</option>
+        </select>
 
-</div>
+        <button
+          onClick={searchNews}
+          disabled={loading}
+        >
+          {loading ? "Searching..." : "Search"}
+        </button>
 
-{/* Error Message */}
-{error && (
-  <p className="error">
-    {error}
-  </p>
-)}
+      </div>
 
-{/* Loading Message */}
-{loading && (
-  <p className="loading">
-    Searching latest financial news...
-  </p>
-)}
+      {error && (
+        <p className="error">
+          {error}
+        </p>
+      )}
 
-{overallSentiment && (
-  <div className="overall-card">
+      {loading && (
+        <p className="loading">
+          Searching latest financial news...
+        </p>
+      )}
 
-    <h2>Overall Market Sentiment</h2>
+      {overallSentiment && (
+        <div className="overall-card">
 
-    <div className={`overall-badge ${overallSentiment.toLowerCase()}`}>
-      {overallSentiment}
-    </div>
+          <h2>Overall Market Sentiment</h2>
 
-    <p>
-      Based on analysis of {companyInfo?.total} news articles
-    </p>
+          <div
+            className={`overall-badge ${overallSentiment.toLowerCase()}`}
+          >
+            {overallSentiment}
+          </div>
 
-  </div>
-)}
+          <p>
+            Based on analysis of {companyInfo?.total} news articles
+          </p>
 
-{/* Summary Cards */}
-{summary && (
-  <div className="summary">
+        </div>
+      )}
 
-    <div className="summary-card positive">
-      <h2>{summary.positive}</h2>
-      <p>Positive</p>
-    </div>
+      {summary && (
+        <div className="summary">
 
-    <div className="summary-card neutral">
-      <h2>{summary.neutral}</h2>
-      <p>Neutral</p>
-    </div>
+          <div className="summary-card positive">
+            <h2>{summary.positive}</h2>
+            <p>Positive</p>
+          </div>
 
-    <div className="summary-card negative">
-      <h2>{summary.negative}</h2>
-      <p>Negative</p>
-    </div>
+          <div className="summary-card neutral">
+            <h2>{summary.neutral}</h2>
+            <p>Neutral</p>
+          </div>
 
-  </div>
-)}
+          <div className="summary-card negative">
+            <h2>{summary.negative}</h2>
+            <p>Negative</p>
+          </div>
 
-<div className="results">
+        </div>
+      )}
+
+      <div className="results">
 
         {articles.map((article, index) => (
 
-  <div className="card" key={index}>
+          <div className="card" key={index}>
 
-    <h3>{article.headline}</h3>
+            <h3>{article.headline}</h3>
 
-    <div className="meta">
+            <div className="meta">
+              <span>📰 {article.source}</span>
+              <span>🕒 {article.published}</span>
+            </div>
 
-      <span>📰 {article.source}</span>
+            <div className="sentiment-row">
 
-      <span>🕒 {article.published}</span>
+              <span
+                className={`badge ${article.sentiment.toLowerCase()}`}
+              >
+                {article.sentiment.toUpperCase()}
+              </span>
 
-    </div>
+            </div>
 
-    <div className="sentiment-row">
+            <a
+              className="read-more"
+              href={article.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Read Full Article →
+            </a>
 
-      <span
-        className={`badge ${article.sentiment.toLowerCase()}`}
-      >
-        {article.sentiment.toUpperCase()}
-      </span>
+          </div>
 
-    </div>
-
-    <a
-      className="read-more"
-      href={article.url}
-      target="_blank"
-      rel="noreferrer"
-    >
-      Read Full Article →
-    </a>
-
-  </div>
-
-))}
+        ))}
 
       </div>
 

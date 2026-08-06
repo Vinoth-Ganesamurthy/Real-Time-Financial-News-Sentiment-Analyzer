@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from backend.schemas.news_response import (
     NewsResponse,
@@ -16,9 +16,20 @@ router = APIRouter(
 
 
 @router.get("/{company}", response_model=NewsResponse)
-def get_news(company: str):
+def get_news(
+    company: str,
+    limit: int = Query(
+        default=5,
+        ge=1,
+        le=50,
+        description="Number of news articles to analyze (1-50)"
+    ),
+):
+    """
+    Fetch news for a company and analyze sentiment.
+    """
 
-    articles = fetch_news(company)
+    articles = fetch_news(company, limit)
 
     if not articles:
         raise HTTPException(

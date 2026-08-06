@@ -14,7 +14,7 @@ from src.services.finnhub_service import fetch_news as fetch_finnhub_news
 from src.services.newsapi_service import fetch_news as fetch_newsapi_news
 
 
-def fetch_news(company: str):
+def fetch_news(company: str, limit: int = 5):
     """
     Fetch news using Finnhub first.
     If no news is found, fall back to NewsAPI.
@@ -29,7 +29,8 @@ def fetch_news(company: str):
     print(f"\nDetected Symbol : {symbol}")
     print("Searching Finnhub...")
 
-    articles = fetch_finnhub_news(symbol)
+    # Fetch from Finnhub
+    articles = fetch_finnhub_news(symbol, limit)
 
     if articles:
         print("✓ News found in Finnhub.")
@@ -38,16 +39,19 @@ def fetch_news(company: str):
     print("No articles found in Finnhub.")
     print("Searching NewsAPI...")
 
-    articles = fetch_newsapi_news(company)
+    # Fallback to NewsAPI
+    articles = fetch_newsapi_news(company, limit)
 
     if articles:
         print("✓ News found in NewsAPI.")
 
     return articles
 
+
 if __name__ == "__main__":
 
     company = input("Enter Company Name: ")
+    limit = 5
 
     # Get Stock Symbol
     symbol = get_stock_symbol(company)
@@ -57,7 +61,7 @@ if __name__ == "__main__":
         exit()
 
     # Fetch News
-    articles = fetch_news(company)
+    articles = fetch_news(company, limit)
 
     if not articles:
         print("\n❌ No news articles found for this company.")
@@ -66,18 +70,14 @@ if __name__ == "__main__":
     # Analyze Sentiment
     results = analyze_articles(articles)
 
-    # ================= HEADER =================
-
     print("\n" + "=" * 100)
     print("REAL-TIME FINANCIAL NEWS SENTIMENT ANALYZER".center(100))
     print("=" * 100)
 
     print(f"\nCompany         : {company.title()}")
     print(f"Stock Symbol    : {symbol}")
-    print(f"News Source     : {'Finnhub / NewsAPI'}")
+    print(f"News Source     : Finnhub / NewsAPI")
     print(f"Articles Found  : {len(results['articles'])}")
-
-    # ================= ARTICLES =================
 
     for i, article in enumerate(results["articles"], start=1):
 
@@ -99,14 +99,10 @@ if __name__ == "__main__":
         print(f"📅 {'Published':<12}: {article['published']}")
         print(f"🤖 {'Sentiment':<12}: {icon} {sentiment}")
 
-    # ================= SUMMARY =================
-
     if results["positive"] > results["negative"]:
         overall = "🟢 POSITIVE"
-
     elif results["negative"] > results["positive"]:
         overall = "🔴 NEGATIVE"
-
     else:
         overall = "🟡 NEUTRAL"
 
