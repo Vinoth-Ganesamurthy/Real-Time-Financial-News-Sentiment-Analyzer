@@ -18,6 +18,9 @@ function App() {
 
   const [overallSentiment, setOverallSentiment] = useState("");
 
+  // Stock data
+  const [stockData, setStockData] = useState(null);
+
   const searchNews = async () => {
     if (!company.trim()) {
       setError("Please enter a company name.");
@@ -28,32 +31,41 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-      `/news/${company}?limit=${limit}`
-      );
+      // Fetch news and stock data together
+      const [newsResponse, stockResponse] = await Promise.all([
+        fetch(`/news/${company}?limit=${limit}`),
+        fetch(`/stock/${company}`),
+      ]);
 
-      const data = await response.json();
+      const newsData = await newsResponse.json();
 
-      if (!response.ok) {
-        setError(data.detail || "Something went wrong.");
+      // -------------------------
+      // NEWS RESPONSE
+      // -------------------------
+
+      if (!newsResponse.ok) {
+        setError(newsData.detail || "Something went wrong.");
         setArticles([]);
         setSummary(null);
         setCompanyInfo(null);
+        setStockData(null);
+        setOverallSentiment("");
         return;
       }
 
       setCompanyInfo({
-        company: data.company,
-        total: data.total_articles,
+        company: newsData.company,
+        total: newsData.total_articles,
       });
 
-      setSearchedCompany(data.company);
-      setTotalArticles(data.total_articles);
+      setSearchedCompany(newsData.company);
+      setTotalArticles(newsData.total_articles);
 
-      setArticles(data.articles || []);
-      setSummary(data.summary);
+      setArticles(newsData.articles || []);
+      setSummary(newsData.summary);
 
-      const { positive, neutral, negative } = data.summary;
+      // Calculate overall sentiment
+      const { positive, neutral, negative } = newsData.summary;
 
       if (positive > neutral && positive > negative) {
         setOverallSentiment("POSITIVE");
@@ -62,9 +74,25 @@ function App() {
       } else {
         setOverallSentiment("NEUTRAL");
       }
+
+      // -------------------------
+      // STOCK RESPONSE
+      // -------------------------
+
+      if (stockResponse.ok) {
+        const stock = await stockResponse.json();
+
+        setStockData(stock);
+      } else {
+        setStockData(null);
+      }
     } catch (err) {
       console.error(err);
+
       setError("Unable to connect to server.");
+      setArticles([]);
+      setSummary(null);
+      setStockData(null);
     } finally {
       setLoading(false);
     }
@@ -72,6 +100,8 @@ function App() {
 
   return (
     <div className="container">
+
+      {/* HEADER */}
 
       <h1 className="title">
         📈 Financial News Sentiment Dashboard
@@ -81,12 +111,7 @@ function App() {
         AI Powered Market Intelligence
       </p>
 
-      {companyInfo && (
-        <div className="company-info">
-          <h2>{companyInfo.company}</h2>
-          <p>{companyInfo.total} Articles Found</p>
-        </div>
-      )}
+      {/* SEARCH */}
 
       <div className="search-box">
 
@@ -103,15 +128,20 @@ function App() {
         />
 
         <select
-          value={limit}
-          onChange={(e) => setLimit(Number(e.target.value))}
-        >
-          <option value={5}>5 Articles</option>
-          <option value={10}>10 Articles</option>
-          <option value={20}>20 Articles</option>
-          <option value={50}>50 Articles</option>
+  value={limit}
+  onChange={(e) => setLimit(Number(e.target.value))}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      searchNews();
+    }
+  }}
+>
+  <option value={5}>5 Articles</option>
+  <option value={10}>10 Articles</option>
+  <option value={20}>20 Articles</option>
+  <option value={50}>50 Articles</option>
         </select>
-
         <button
           onClick={searchNews}
           disabled={loading}
@@ -121,17 +151,103 @@ function App() {
 
       </div>
 
+      {/* ERROR */}
+
       {error && (
         <p className="error">
           {error}
         </p>
       )}
 
+      {/* LOADING */}
+
       {loading && (
         <p className="loading">
-          Searching latest financial news...
+          Fetching latest market data and financial news...
         </p>
       )}
+
+      {/* COMPANY INFO */}
+
+      {companyInfo && (
+        <div className="company-info">
+
+          <h2>{companyInfo.company}</h2>
+
+          <p>
+            {companyInfo.total} Articles Found
+          </p>
+
+        </div>
+      )}
+
+      {/* STOCK OVERVIEW */}
+
+      {stockData && (
+        <div className="stock-card">
+
+          <div className="stock-header">
+
+            <div>
+              <h2>{stockData.company}</h2>
+
+              <span className="stock-symbol">
+                {stockData.symbol}
+              </span>
+            </div>
+
+            <div className="stock-price">
+
+              <h2>
+                ${stockData.current_price?.toFixed(2)}
+              </h2>
+
+              <span
+                className={
+                  stockData.change >= 0
+                    ? "stock-positive"
+                    : "stock-negative"
+                }
+              >
+                {stockData.change >= 0 ? "+" : ""}
+                ${stockData.change?.toFixed(2)}
+                {" "}
+                ({stockData.change_percent?.toFixed(2)}%)
+              </span>
+
+            </div>
+
+          </div>
+
+          <div className="stock-details">
+
+            <div>
+              <span>Day High</span>
+              <strong>
+                ${stockData.day_high?.toFixed(2)}
+              </strong>
+            </div>
+
+            <div>
+              <span>Day Low</span>
+              <strong>
+                ${stockData.day_low?.toFixed(2)}
+              </strong>
+            </div>
+
+            <div>
+              <span>Previous Close</span>
+              <strong>
+                ${stockData.previous_close?.toFixed(2)}
+              </strong>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* OVERALL SENTIMENT */}
 
       {overallSentiment && (
         <div className="overall-card">
@@ -150,6 +266,8 @@ function App() {
 
         </div>
       )}
+
+      {/* SENTIMENT SUMMARY */}
 
       {summary && (
         <div className="summary">
@@ -172,6 +290,8 @@ function App() {
         </div>
       )}
 
+      {/* NEWS ARTICLES */}
+
       <div className="results">
 
         {articles.map((article, index) => (
@@ -181,8 +301,15 @@ function App() {
             <h3>{article.headline}</h3>
 
             <div className="meta">
-              <span>📰 {article.source}</span>
-              <span>🕒 {article.published}</span>
+
+              <span>
+                📰 {article.source}
+              </span>
+
+              <span>
+                🕒 {article.published}
+              </span>
+
             </div>
 
             <div className="sentiment-row">
