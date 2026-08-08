@@ -10,13 +10,14 @@ app = FastAPI(
     version="2.0"
 )
 
-
 # Allow React frontend to access this API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://real-time-financial-news-sentiment-iskv.onrender.com",
+
     ],
     allow_credentials=True,
     allow_methods=["*"],
