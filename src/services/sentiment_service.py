@@ -106,7 +106,11 @@ def analyze_articles(articles):
         # Sentiment Prediction
         # -------------------------------------------------
 
+        print(f"Analyzing sentiment: {headline}")
+
         sentiment = predict_sentiment(headline)
+
+        print(f"Sentiment: {sentiment}")
 
         sentiment_lower = sentiment.lower()
 

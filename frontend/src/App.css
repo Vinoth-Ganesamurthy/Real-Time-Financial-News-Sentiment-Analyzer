@@ -269,3 +269,84 @@ button:hover {
 .overall-card p{
     color:#666;
 }
+
+/* ============================= */
+/* Stock Performance */
+/* ============================= */
+
+.stock-performance {
+  width: 90%;
+  max-width: 1100px;
+  margin: 35px auto;
+  padding: 30px;
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.stock-performance h2 {
+  text-align: center;
+  color: #2455d6;
+  margin-bottom: 25px;
+  font-size: 28px;
+}
+
+.performance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.performance-card {
+  background: #f7f9ff;
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  border: 1px solid #e3e8f5;
+}
+
+.performance-card h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  color: #555;
+}
+
+.performance-card p {
+  margin: 0;
+  font-size: 25px;
+  font-weight: bold;
+  color: #222;
+}
+
+.positive-value {
+  color: #16a34a !important;
+}
+
+.negative-value {
+  color: #dc2626 !important;
+}
+
+/* ============================= */
+/* Responsive */
+/* ============================= */
+
+@media (max-width: 800px) {
+
+  .performance-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .performance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-performance {
+    width: 85%;
+    padding: 20px;
+  }
+
+}

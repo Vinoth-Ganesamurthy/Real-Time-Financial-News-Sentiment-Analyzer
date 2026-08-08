@@ -1,17 +1,19 @@
 from fastapi import APIRouter, HTTPException
 
 from src.services.company_service import get_stock_symbol
-from src.services.stock_service import fetch_stock_quote
-
+from src.services.historical_stock_service import (
+    fetch_historical_data,
+    calculate_performance,
+)
 
 router = APIRouter(
     prefix="/stock",
-    tags=["Stock Market"],
+    tags=["Stock Performance"],
 )
 
 
-@router.get("/{company}")
-def get_stock(company: str):
+@router.get("/performance/{company}")
+def get_stock_performance(company: str):
 
     symbol = get_stock_symbol(company)
 
@@ -21,25 +23,24 @@ def get_stock(company: str):
             detail="Company not found."
         )
 
-    try:
-        quote = fetch_stock_quote(symbol)
+    historical_data = fetch_historical_data(symbol)
 
-        if quote["current_price"] is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Stock quote not available."
-            )
-
-        return {
-            "company": company,
-            **quote,
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
+    if not historical_data:
         raise HTTPException(
-            status_code=500,
-            detail=f"Unable to fetch stock data: {str(e)}"
+            status_code=404,
+            detail="Historical stock data not found."
         )
+
+    performance = calculate_performance(historical_data)
+
+    if not performance:
+        raise HTTPException(
+            status_code=404,
+            detail="Unable to calculate stock performance."
+        )
+
+    return {
+        "company": company.title(),
+        "symbol": symbol,
+        **performance,
+    }
