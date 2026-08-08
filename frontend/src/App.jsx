@@ -1,6 +1,9 @@
 import { useState } from "react";
 import "./App.css";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "";
+
 function App() {
   const [company, setCompany] = useState("");
   const [limit, setLimit] = useState(5);
@@ -34,7 +37,7 @@ function App() {
       // -----------------------------
 
       const newsResponse = await fetch(
-        `/news/${encodeURIComponent(company.trim())}?limit=${limit}`
+      `${API_BASE_URL}/news/${encodeURIComponent(company.trim())}?limit=${limit}`
       );
 
       const newsData = await newsResponse.json();
@@ -94,8 +97,8 @@ function App() {
       // -----------------------------
 
       const performanceResponse = await fetch(
-        `/stock/performance/${encodeURIComponent(company.trim())}`
-      );
+      `${API_BASE_URL}/stock/performance/${encodeURIComponent(company.trim())}`
+    );
 
       const performanceData = await performanceResponse.json();
 
