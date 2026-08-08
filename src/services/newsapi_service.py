@@ -16,82 +16,136 @@ load_dotenv()
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
 
-COMPANY_ALIASES = {
-    "reliance": [
-        '"Reliance Industries"',
-    ],
-    "reliance industries": [
-        '"Reliance Industries"',
-    ],
-    "infosys": [
-        '"Infosys"',
-    ],
-    "tcs": [
-        '"Tata Consultancy Services"',
-    ],
-    "hdfc bank": [
-        '"HDFC Bank"',
-    ],
-    "icici bank": [
-        '"ICICI Bank"',
-    ],
+# ======================================================
+# Company Search Names
+# ======================================================
+
+PRIMARY_NAMES = {
+    # USA
+    "tesla": '"Tesla"',
+    "nvidia": '"NVIDIA"',
+
+    # India
+    "reliance": '"Reliance Industries"',
+    "reliance industries": '"Reliance Industries"',
+    "infosys": '"Infosys"',
+    "tcs": '"Tata Consultancy Services"',
+    "hdfc bank": '"HDFC Bank"',
+    "icici bank": '"ICICI Bank"',
+
+    # Singapore
+    "dbs": '"DBS Group"',
+    "dbs group": '"DBS Group"',
+    "dbs bank": '"DBS Bank"',
+
+    "st engineering": '"ST Engineering"',
+    "singapore technologies engineering": '"ST Engineering"',
+    "singapore technologies engineering ltd": '"ST Engineering"',
+
+    # Australia
+    "commonwealth bank": '"Commonwealth Bank"',
+    "commonwealth bank of australia": '"Commonwealth Bank"',
+}
+
+
+# ======================================================
+# Company Matching Terms
+# ======================================================
+
+COMPANY_TERMS = {
     "tesla": [
-        '"Tesla"',
+        "tesla",
+        "tsla",
     ],
+
     "nvidia": [
-        '"NVIDIA"',
+        "nvidia",
+        "nvda",
+    ],
+
+    "reliance": [
+        "reliance industries",
+        "ril",
+        "reliance retail",
+        "reliance jio",
+    ],
+
+    "reliance industries": [
+        "reliance industries",
+        "ril",
+        "reliance retail",
+        "reliance jio",
+    ],
+
+    "infosys": [
+        "infosys",
+        "infy",
+    ],
+
+    "tcs": [
+        "tata consultancy services",
+        "tcs",
+    ],
+
+    "hdfc bank": [
+        "hdfc bank",
+    ],
+
+    "icici bank": [
+        "icici bank",
+    ],
+
+    "dbs": [
+        "dbs group",
+        "dbs bank",
+    ],
+
+    "dbs group": [
+        "dbs group",
+        "dbs bank",
+    ],
+
+    "dbs bank": [
+        "dbs bank",
+        "dbs group",
+    ],
+
+    "st engineering": [
+        "st engineering",
+        "singapore technologies engineering",
+    ],
+
+    "singapore technologies engineering": [
+        "st engineering",
+        "singapore technologies engineering",
+    ],
+
+    "singapore technologies engineering ltd": [
+        "st engineering",
+        "singapore technologies engineering",
+    ],
+
+    "commonwealth bank": [
+        "commonwealth bank",
+        "commonwealth bank of australia",
+        "cba",
+    ],
+
+    "commonwealth bank of australia": [
+        "commonwealth bank",
+        "commonwealth bank of australia",
+        "cba",
     ],
 }
 
 
-def _get_company_terms(company: str):
-    """
-    Return company terms used for matching.
-    """
-
-    key = company.strip().lower()
-
-    terms = {
-        "reliance": [
-            "reliance industries",
-            "reliance industries limited",
-            "ril",
-            "reliance jio",
-            "reliance retail",
-        ],
-        "reliance industries": [
-            "reliance industries",
-            "reliance industries limited",
-            "ril",
-            "reliance jio",
-            "reliance retail",
-        ],
-        "infosys": [
-            "infosys",
-            "infosys limited",
-            "infy",
-        ],
-        "tcs": [
-            "tata consultancy services",
-            "tcs",
-        ],
-        "hdfc bank": [
-            "hdfc bank",
-            "hdfc bank limited",
-        ],
-        "icici bank": [
-            "icici bank",
-            "icici bank limited",
-        ],
-        "tesla": [
-            "tesla",
-        ],
-        "nvidia": [
-            "nvidia",
-        ],
-    }
-
-    return terms.get(key, [key])
+# Companies where an exact NewsAPI search can be trusted
+# if the returned snippet does not repeat the company name.
+TRUSTED_EXACT_QUERY_COMPANIES = {
+    "st engineering",
+    "singapore technologies engineering",
+    "singapore technologies engineering ltd",
+}
 
 
 def _build_search_query(company: str):
@@ -101,20 +155,22 @@ def _build_search_query(company: str):
 
     key = company.strip().lower()
 
-    primary_names = {
-        "reliance": '"Reliance Industries"',
-        "reliance industries": '"Reliance Industries"',
-        "infosys": '"Infosys"',
-        "tcs": '"Tata Consultancy Services"',
-        "hdfc bank": '"HDFC Bank"',
-        "icici bank": '"ICICI Bank"',
-        "tesla": '"Tesla"',
-        "nvidia": '"NVIDIA"',
-    }
-
-    return primary_names.get(
+    return PRIMARY_NAMES.get(
         key,
         f'"{company.strip()}"'
+    )
+
+
+def _get_company_terms(company: str):
+    """
+    Return company terms used for article matching.
+    """
+
+    key = company.strip().lower()
+
+    return COMPANY_TERMS.get(
+        key,
+        [key]
     )
 
 
@@ -122,8 +178,9 @@ def _get_relevance_score(article, company: str):
     """
     Calculate article relevance.
 
-    Company in headline = strong relevance.
-    Company in description = additional relevance.
+    Headline      = strongest
+    Description   = medium
+    Content       = weaker fallback
     """
 
     title = (
@@ -132,6 +189,10 @@ def _get_relevance_score(article, company: str):
 
     description = (
         article.get("description") or ""
+    ).lower()
+
+    content = (
+        article.get("content") or ""
     ).lower()
 
     terms = _get_company_terms(company)
@@ -146,6 +207,9 @@ def _get_relevance_score(article, company: str):
             score += 10
 
         if term in description:
+            score += 5
+
+        if term in content:
             score += 2
 
     return score
@@ -153,7 +217,7 @@ def _get_relevance_score(article, company: str):
 
 def _is_low_quality_headline(article):
     """
-    Reject generic market-list headlines.
+    Reject broad list-style market headlines.
     """
 
     title = (
@@ -177,15 +241,49 @@ def _is_low_quality_headline(article):
     )
 
 
+def _remove_duplicates(articles):
+    """
+    Remove duplicate article URLs and headlines.
+    """
+
+    unique_articles = []
+
+    seen_urls = set()
+    seen_headlines = set()
+
+    for article in articles:
+
+        url = (
+            article.get("url") or ""
+        ).strip()
+
+        headline = (
+            article.get("title") or ""
+        ).strip().lower()
+
+        if not url or not headline:
+            continue
+
+        if url in seen_urls:
+            continue
+
+        if headline in seen_headlines:
+            continue
+
+        seen_urls.add(url)
+        seen_headlines.add(headline)
+
+        unique_articles.append(article)
+
+    return unique_articles
+
+
 def fetch_news(
     company: str,
     limit: int = 5
 ):
     """
-    Fetch company-related news from NewsAPI.
-
-    Articles are scored, filtered, deduplicated,
-    and limited to the requested number.
+    Fetch relevant company news from NewsAPI.
     """
 
     if not NEWS_API_KEY:
@@ -193,6 +291,8 @@ def fetch_news(
         print("❌ NEWS_API_KEY is missing.")
 
         return []
+
+    company_key = company.strip().lower()
 
     url = "https://newsapi.org/v2/everything"
 
@@ -248,23 +348,23 @@ def fetch_news(
             f"{len(articles)}"
         )
 
-        # -----------------------------------------
-        # Score and filter articles
-        # -----------------------------------------
+        # ==================================================
+        # Relevance Scoring
+        # ==================================================
 
         scored_articles = []
 
         for article in articles:
+
+            if _is_low_quality_headline(article):
+                continue
 
             score = _get_relevance_score(
                 article,
                 company
             )
 
-            if (
-                score >= 10
-                and not _is_low_quality_headline(article)
-            ):
+            if score > 0:
 
                 scored_articles.append(
                     (
@@ -273,65 +373,55 @@ def fetch_news(
                     )
                 )
 
-        print(
-            f"Relevant articles after scoring: "
-            f"{len(scored_articles)}"
-        )
-
-        # -----------------------------------------
-        # Sort by relevance
-        # -----------------------------------------
-
         scored_articles.sort(
             key=lambda item: item[0],
             reverse=True
         )
 
-        # -----------------------------------------
-        # Remove duplicate URLs
-        # AND duplicate headlines
-        # -----------------------------------------
+        relevant_articles = [
+            article
+            for score, article
+            in scored_articles
+        ]
 
-        unique_articles = []
+        print(
+            f"Relevant articles after scoring: "
+            f"{len(relevant_articles)}"
+        )
 
-        seen_urls = set()
-        seen_headlines = set()
+        # ==================================================
+        # Trusted Exact Query Fallback
+        # ==================================================
 
-        for score, article in scored_articles:
+        if (
+            not relevant_articles
+            and company_key
+            in TRUSTED_EXACT_QUERY_COMPANIES
+        ):
 
-            article_url = (
-                article.get("url") or ""
-            ).strip()
+            print(
+                "Using exact-query fallback "
+                "for trusted company."
+            )
 
-            headline = (
-                article.get("title") or ""
-            ).strip().lower()
+            relevant_articles = [
+                article
+                for article in articles
+                if not _is_low_quality_headline(article)
+            ]
 
-            if not article_url:
-                continue
+        # ==================================================
+        # Duplicate Removal
+        # ==================================================
 
-            if not headline:
-                continue
-
-            if article_url in seen_urls:
-                continue
-
-            if headline in seen_headlines:
-                continue
-
-            seen_urls.add(article_url)
-            seen_headlines.add(headline)
-
-            unique_articles.append(article)
+        unique_articles = _remove_duplicates(
+            relevant_articles
+        )
 
         print(
             f"Unique relevant articles: "
             f"{len(unique_articles)}"
         )
-
-        # -----------------------------------------
-        # Selected articles
-        # -----------------------------------------
 
         print("\nSelected articles:")
 
@@ -342,24 +432,22 @@ def fetch_news(
                 article.get("title")
             )
 
-        # -----------------------------------------
-        # Return results
-        # -----------------------------------------
-
         return unique_articles[:limit]
 
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as error:
 
         print(
-            f"❌ NewsAPI request failed: {e}"
+            f"❌ NewsAPI request failed: "
+            f"{error}"
         )
 
         return []
 
-    except Exception as e:
+    except Exception as error:
 
         print(
-            f"❌ NewsAPI unexpected error: {e}"
+            f"❌ NewsAPI unexpected error: "
+            f"{error}"
         )
 
         return []

@@ -182,10 +182,10 @@ function App() {
     }
   }}
 >
-  <option value={5}>5 Articles</option>
-  <option value={10}>10 Articles</option>
-  <option value={20}>20 Articles</option>
-  <option value={50}>50 Articles</option>
+<option value={5}>Up to 5 Articles</option>
+<option value={10}>Up to 10 Articles</option>
+<option value={20}>Up to 20 Articles</option>
+<option value={50}>Up to 50 Articles</option>
 </select>
 
         <button
@@ -231,11 +231,18 @@ function App() {
           <div className="performance-grid">
 
             <div className="performance-card">
-              <h3>Current Price</h3>
-              <p>
-                ${stockPerformance.current_price}
-              </p>
-            </div>
+  <h3>Current Price</h3>
+  <p>
+    {stockPerformance.symbol?.endsWith(".NS")
+      ? "₹"
+      : stockPerformance.symbol?.endsWith(".SI")
+      ? "S$"
+      : stockPerformance.symbol?.endsWith(".AX")
+      ? "A$"
+      : "$"}
+    {stockPerformance.current_price}
+  </p>
+</div>
 
             <div className="performance-card">
               <h3>1 Week</h3>
